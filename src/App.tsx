@@ -24,44 +24,36 @@ import {
 const HERO_IMAGE_URL = "https://lh3.googleusercontent.com/aida-public/AB6AXuCaBSwfB7RN0lHyeNLj30vPs5DqeSWKbf8X59XlDpCjQsbufBJeCDpt2n_pOD70wcfmpKOfMePm4qPh_R1IPIH0PQY4wSWDCpTh2w4cRdMrAcoPSYJjexJdh-SHXo-9ayySD3tF8NUwd1tlgvX9t_ZgTWTxQsWkZD-3hxFNDz-NRLMuyphDx8OZtLvrVkC20Da8eawKxadbBtLX8y0ZWD1mycujhBplEhe0y6hdm1LWejeJyeRH3TTxbUS-uC-HUr9Hpz0xkzOTLbtY";
 const PROFILE_IMAGE_URL = "https://lh3.googleusercontent.com/aida-public/AB6AXuDMPmt8vogOt3IzPrv0xIx9jBr7zHQkY9GTJy19UkN9zo4erCR_YJMofKHVQAoGkn28OgNH5ZX4380PtLHFvis6AOMlf49n21IK-iNk7iR15FpOd_nV9fvYWc5AYC6MgwDmQkDgShpqoT79mlLeUQvqiThrByqDKPRgdxElxJ0TS1tb7BvSMc0TOTPQ0Wci9moNjO4IrmBJfFURaxuqna5Kssu2xkb92lCjUDHGpDQpsRWYjY9PYgTFsXNb0uHBXx2rP78c64aOowTS";
 
-const FEATURED_EXAMS = [
-  {
-    id: 1,
-    institution: "Banco Central do Brasil",
-    role: "Analista e Técnico em diversas áreas",
-    location: "Brasília, DF",
-    deadline: "Até 15 de Novembro",
-    salary: "R$ 15.000,00 - R$ 24.000,00",
-    status: "INSCRIÇÕES ABERTAS",
-    statusColor: "bg-green-100 text-green-700",
-    icon: Building2,
-    iconColor: "text-blue-600 bg-blue-50"
-  },
-  {
-    id: 2,
-    institution: "TRF 3ª Região",
-    role: "Analista Judiciário e Técnico Judiciário",
-    location: "SP e MS",
-    deadline: "Até 22 de Outubro",
-    salary: "R$ 8.529,67 - R$ 13.994,78",
-    status: "INSCRIÇÕES ABERTAS",
-    statusColor: "bg-green-100 text-green-700",
-    icon: Gavel,
-    iconColor: "text-indigo-600 bg-indigo-50"
-  },
-  {
-    id: 3,
-    institution: "Polícia Federal",
-    role: "Agente, Escrivão e Delegado Federal",
-    location: "Nacional",
-    deadline: "Previsto Dez/2024",
-    salary: "A definir",
-    status: "EM BREVE",
-    statusColor: "bg-amber-100 text-amber-700",
-    icon: ShieldAlert,
-    iconColor: "text-slate-600 bg-slate-100"
-  }
-];
+// Nenhuma mock data necessária
+
+// Fallback utility to assign icons/colors to real data
+const mapApiDataToExam = (apiExam: any, index: number) => {
+  const icons = [Building2, Gavel, ShieldAlert];
+  const iconColors = ["text-blue-600 bg-blue-50", "text-indigo-600 bg-indigo-50", "text-slate-600 bg-slate-100"];
+  const statusColors: Record<string, string> = {
+    'ABERTAS': "bg-green-100 text-green-700",
+    'EM BREVE': "bg-amber-100 text-amber-700",
+    'ENCERRADAS': "bg-red-100 text-red-700"
+  };
+
+  let statusKey = (apiExam.status || '').toUpperCase();
+  if (statusKey.includes('ABERTA')) statusKey = 'ABERTAS';
+  else if (statusKey.includes('BREVE')) statusKey = 'EM BREVE';
+
+  return {
+    id: apiExam.id || index,
+    institution: apiExam.titulo || apiExam.institution,
+    role: apiExam.escolaridade || apiExam.role,
+    location: apiExam.estado || apiExam.location,
+    deadline: apiExam.data_abertura || apiExam.deadline,
+    salary: apiExam.taxa_inscricao ? `Taxa: R$ ${apiExam.taxa_inscricao}` : (apiExam.salary || "A definir"),
+    status: (apiExam.status || "INSCRIÇÕES ABERTAS").toUpperCase(),
+    statusColor: statusColors[statusKey] || statusColors['ABERTAS'],
+    icon: icons[index % icons.length],
+    iconColor: iconColors[index % iconColors.length],
+    link: apiExam.link
+  };
+};
 
 // --- Components ---
 
@@ -151,8 +143,12 @@ const Hero = () => {
   );
 };
 
-const SearchWidget = () => {
+const SearchWidget = ({ onSearch }: { onSearch: (filters: any) => void }) => {
   const [activeTab, setActiveTab] = useState('concursos');
+  const [escolaridade, setEscolaridade] = useState('');
+  const [estado, setEstado] = useState('');
+  const [dataAbertura, setDataAbertura] = useState('');
+  const [taxaInscricao, setTaxaInscricao] = useState('');
 
   return (
     <div className="relative z-30 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 lg:-mt-32 mb-20">
@@ -190,12 +186,15 @@ const SearchWidget = () => {
                 <GraduationCap size={16} /> Escolaridade
               </label>
               <div className="relative">
-                <select className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
-                  <option>Qualquer nível</option>
-                  <option>Fundamental</option>
-                  <option>Médio</option>
-                  <option>Técnico</option>
-                  <option>Superior</option>
+                <select 
+                  value={escolaridade}
+                  onChange={(e) => setEscolaridade(e.target.value)}
+                  className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
+                  <option value="">Qualquer nível</option>
+                  <option value="Fundamental">Fundamental</option>
+                  <option value="Médio">Médio</option>
+                  <option value="Técnico">Técnico</option>
+                  <option value="Superior">Superior</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -209,12 +208,15 @@ const SearchWidget = () => {
                 <MapPin size={16} /> Estado (UF)
               </label>
               <div className="relative">
-                <select className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
-                  <option>Brasil (Todos)</option>
-                  <option>São Paulo (SP)</option>
-                  <option>Rio de Janeiro (RJ)</option>
-                  <option>Minas Gerais (MG)</option>
-                  <option>Distrito Federal (DF)</option>
+                <select 
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value)}
+                  className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
+                  <option value="">Brasil (Todos)</option>
+                  <option value="SP">São Paulo (SP)</option>
+                  <option value="RJ">Rio de Janeiro (RJ)</option>
+                  <option value="MG">Minas Gerais (MG)</option>
+                  <option value="DF">Distrito Federal (DF)</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -229,6 +231,8 @@ const SearchWidget = () => {
               </label>
               <input 
                 type="date" 
+                value={dataAbertura}
+                onChange={(e) => setDataAbertura(e.target.value)}
                 className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
               />
             </div>
@@ -239,11 +243,14 @@ const SearchWidget = () => {
                 <CreditCard size={16} /> Taxa de Inscrição
               </label>
               <div className="relative">
-                <select className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
-                  <option>Qualquer valor</option>
-                  <option>Grátis</option>
-                  <option>Até R$ 50,00</option>
-                  <option>R$ 50 - R$ 150</option>
+                <select 
+                  value={taxaInscricao}
+                  onChange={(e) => setTaxaInscricao(e.target.value)}
+                  className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 focus:border-transparent appearance-none transition-all">
+                  <option value="">Qualquer valor</option>
+                  <option value="0">Grátis</option>
+                  <option value="50">Até R$ 50,00</option>
+                  <option value="150">R$ 50 - R$ 150</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -255,7 +262,9 @@ const SearchWidget = () => {
 
           {/* Action Button */}
           <div className="mt-8 flex justify-end">
-            <button className="group flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl w-full md:w-auto">
+            <button 
+              onClick={() => onSearch({ escolaridade, estado, data_abertura: dataAbertura, taxa_inscricao: taxaInscricao })}
+              className="group flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl w-full md:w-auto">
               <span>BUSCAR CONCURSOS</span>
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
@@ -266,10 +275,13 @@ const SearchWidget = () => {
   );
 };
 
-const ExamCard = ({ exam }: { exam: any }) => {
+const ExamCard = ({ exam, onClick }: { key?: React.Key, exam: any; onClick: (exam: any) => void }) => {
   const Icon = exam.icon;
   return (
-    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
+    <div 
+      onClick={() => onClick(exam)}
+      className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full cursor-pointer transform hover:-translate-y-1"
+    >
       <div className="flex justify-between items-start mb-6">
         <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${exam.iconColor}`}>
           <Icon size={28} />
@@ -306,23 +318,117 @@ const ExamCard = ({ exam }: { exam: any }) => {
   );
 };
 
-const FeaturedSection = () => {
+const ExamModal = ({ exam, onClose }: { exam: any, onClose: () => void }) => {
+  if (!exam) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur z-10 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-slate-900 line-clamp-1 pr-4">{exam.institution}</h2>
+          <button 
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 md:p-8 space-y-8">
+          
+          {/* Status & ID Badge */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider ${exam.statusColor}`}>
+              {exam.status}
+            </span>
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <GraduationCap size={14} /> Cargos/Escolaridade
+              </span>
+              <p className="text-sm font-medium text-slate-700">{exam.role}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPinIcon size={14} /> Localidade
+              </span>
+              <p className="text-sm font-medium text-slate-700">{exam.location}</p>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarIcon size={14} /> Período/Validade
+              </span>
+              <p className="text-sm font-medium text-slate-700">{exam.deadline}</p>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <DollarSign size={14} /> Remuneração / Taxa
+              </span>
+              <p className="text-sm font-medium text-slate-700">{exam.salary}</p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer Actions */}
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 flex flex-col sm:flex-row items-center justify-end gap-3 rounded-b-2xl">
+          <button 
+            onClick={onClose}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            Fechar
+          </button>
+          
+          <a 
+            href={exam.link || "#"} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+          >
+            Ver Edital Oficial <ExternalLink size={18} />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FeaturedSection = ({ exams, onExamClick }: { exams: any[], onExamClick: (exam: any) => void }) => {
   return (
     <section className="py-16 px-4 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Concursos em Destaque</h2>
-          <p className="text-slate-500 mt-2 font-medium text-lg">As melhores oportunidades com inscrições abertas esta semana.</p>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Concursos Disponíveis</h2>
+          <p className="text-slate-500 mt-2 font-medium text-lg">Encontre as melhores oportunidades que combinam com o seu perfil.</p>
         </div>
-        <a href="#" className="text-blue-600 font-bold flex items-center gap-1 hover:underline whitespace-nowrap">
-          Ver todos <ExternalLink size={16} />
-        </a>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {FEATURED_EXAMS.map(exam => (
-          <ExamCard key={exam.id} exam={exam} />
-        ))}
+        {exams.length > 0 ? (
+          exams.map(exam => (
+            <ExamCard key={exam.id} exam={exam} onClick={onExamClick} />
+          ))
+        ) : (
+          <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <h3 className="text-xl font-bold text-slate-700 mb-2">Nenhum concurso encontrado</h3>
+            <p className="text-slate-500">Tente ajustar os filtros da sua busca para encontrar mais resultados.</p>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -401,15 +507,84 @@ const Footer = () => {
 };
 
 export default function App() {
+  const [exams, setExams] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedExam, setSelectedExam] = React.useState<any | null>(null);
+
+  // Prevent background scrolling when modal is open
+  React.useEffect(() => {
+    if (selectedExam) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedExam]);
+
+  const fetchExams = async (filters: any = {}) => {
+    setLoading(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const searchParams = new URLSearchParams();
+      
+      if (filters.escolaridade) {
+        searchParams.append('escolaridade', filters.escolaridade);
+      }
+      if (filters.estado) {
+        searchParams.append('estado', filters.estado);
+      }
+      if (filters.data_abertura) {
+        searchParams.append('data_abertura', filters.data_abertura);
+      }
+      if (filters.taxa_inscricao) {
+        searchParams.append('taxa_inscricao', filters.taxa_inscricao);
+      }
+      
+      const queryString = searchParams.toString();
+      const url = `${apiUrl}/concursos${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await fetch(url);
+      const result = await response.json();
+      
+      if (result && result.data && result.data.length > 0) {
+        const apiExams = result.data.map(mapApiDataToExam);
+        setExams(apiExams);
+      } else {
+        setExams([]);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar concursos: ", error);
+      setExams([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchExams();
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
       <Header />
       <main>
         <Hero />
-        <SearchWidget />
-        <FeaturedSection />
+        <SearchWidget onSearch={fetchExams} />
+        {loading ? (
+          <div className="py-16 text-center text-slate-500 font-bold">Carregando concursos...</div>
+        ) : (
+          <FeaturedSection exams={exams} onExamClick={setSelectedExam} />
+        )}
       </main>
       <Footer />
+      {selectedExam && (
+        <ExamModal 
+          exam={selectedExam} 
+          onClose={() => setSelectedExam(null)} 
+        />
+      )}
     </div>
   );
 }
